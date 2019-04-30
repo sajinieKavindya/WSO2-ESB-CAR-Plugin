@@ -27,7 +27,6 @@ import org.wso2.maven.Model.ArtifactDependency;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -83,10 +82,6 @@ public class CARMojo extends AbstractMojo {
 
         // Create CApp
         try {
-            // Create a ZIP file to write data.
-            FileOutputStream fos = new FileOutputStream(getArchiveFile(".car"));
-            ZipOutputStream zos = new ZipOutputStream(fos);
-
             // Create directory to be compressed.
             String archiveDirectory = getArchiveFile("").getAbsolutePath();
             boolean createdArchiveDirectory = createDirectory(archiveDirectory);
@@ -100,17 +95,11 @@ public class CARMojo extends AbstractMojo {
                 cAppHandler.createDependencyArtifactsXmlFile(archiveDirectory, dependencies, project);
 
                 File fileToZip = new File(archiveDirectory);
-//                zipFile(fileToZip, new File(fileToZip.getName()), zos);
-//                zipFolder(fileToZip, getArchiveFile(".car"));
-
                 zipFolder(fileToZip.getPath(), getArchiveFile(".car").getPath());
-
 
             } else {
                 getLog().error("Could not create corresponding archive directory.");
             }
-            zos.close();
-            fos.close();
         } catch (Exception e) {
             getLog().error(e);
         }
@@ -123,39 +112,6 @@ public class CARMojo extends AbstractMojo {
         getLog().info("------------------------------------------------------------------------");
         getLog().info("Building Synapse Config Project");
         getLog().info("------------------------------------------------------------------------");
-    }
-
-
-    private static void zipFile(File fileToZip, File fileName, ZipOutputStream zipOut) throws IOException {
-        if (fileToZip.isHidden()) {
-            return;
-        }
-        if (fileToZip.isDirectory()) {
-            if (fileName.getPath().endsWith("/")) {
-                zipOut.putNextEntry(new ZipEntry(fileName.getPath()));
-                zipOut.closeEntry();
-            } else {
-                zipOut.putNextEntry(new ZipEntry(fileName + "/"));
-                zipOut.closeEntry();
-            }
-            File[] children = fileToZip.listFiles();
-            for (File childFile : children) {
-                zipFile(childFile, new File(fileName + "/" + childFile.getName()), zipOut);
-            }
-            return;
-        }
-        FileInputStream fis = new FileInputStream(fileToZip);
-        String name = fileName.getPath();
-        name = name.replace("newP_1.0-SNAPSHOT", "");
-        ZipEntry zipEntry = new ZipEntry(name);
-        System.out.println("Zip " + fileName + "\n to " + name);
-        zipOut.putNextEntry(zipEntry);
-        byte[] bytes = new byte[1024];
-        int length;
-        while ((length = fis.read(bytes)) >= 0) {
-            zipOut.write(bytes, 0, length);
-        }
-        fis.close();
     }
 
     private File getArchiveFile(String fileExtension) {
@@ -173,81 +129,44 @@ public class CARMojo extends AbstractMojo {
         return archiveFile;
     }
 
-    public void zipFolder(File srcFolder, File destZipFile) throws Exception {
-        try (FileOutputStream fileWriter = new FileOutputStream(destZipFile);
-             ZipOutputStream zip = new ZipOutputStream(fileWriter)) {
-
-            addFolderToZip(srcFolder, srcFolder, zip);
-        }
-    }
-
-    private void addFileToZip(File rootPath, File srcFile, ZipOutputStream zip) throws Exception {
-
-        if (srcFile.isDirectory()) {
-            addFolderToZip(rootPath, srcFile, zip);
-        } else {
-            byte[] buf = new byte[1024];
-            int len;
-            try (FileInputStream in = new FileInputStream(srcFile)) {
-                String name = srcFile.getPath();
-                name = name.replace(rootPath.getPath(), "");
-                System.out.println("Zip " + srcFile + "\n to " + srcFile.getPath());
-                zip.putNextEntry(new ZipEntry(srcFile.getPath()));
-                while ((len = in.read(buf)) > 0) {
-                    zip.write(buf, 0, len);
-                }
-            }
-        }
-    }
-
-    private void addFolderToZip(File rootPath, File srcFolder, ZipOutputStream zip) throws Exception {
-        for (File fileName : srcFolder.listFiles()) {
-            addFileToZip(rootPath, fileName, zip);
-        }
-    }
-
-
-    static public void zipFolder(String srcFolder, String destZipFile) {
+    private void zipFolder(String srcFolder, String destZipFile) {
         ZipOutputStream zip = null;
         FileOutputStream fileWriter = null;
         try {
             fileWriter = new FileOutputStream(destZipFile);
             zip = new ZipOutputStream(fileWriter);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            return;
-        }
 
-        addFolderContentsToZip(srcFolder, zip);
-        try {
+            addFolderContentsToZip(srcFolder, zip);
+
             zip.flush();
             zip.close();
         } catch (Exception ex) {
-            ex.printStackTrace();
+            getLog().error("Error occurred while creating CAR file. " + ex);
         }
     }
 
-    static private void addFolderContentsToZip(String srcFolder, ZipOutputStream zip) {
+    private void addFolderContentsToZip(String srcFolder, ZipOutputStream zip) {
         File folder = new File(srcFolder);
-        String fileListe[] = folder.list();
+        String[] fileList = folder.list();
         try {
-            int i = 0;
-            while (true) {
-                if (fileListe.length == i) break;
-                if (new File(folder, fileListe[i]).isDirectory()) {
-                    zip.putNextEntry(new ZipEntry(fileListe[i] + "/"));
-                    zip.closeEntry();
+            if (fileList != null) {
+                int i = 0;
+                while (true) {
+                    if (fileList.length == i) break;
+                    if (new File(folder, fileList[i]).isDirectory()) {
+                        zip.putNextEntry(new ZipEntry(fileList[i] + "/"));
+                        zip.closeEntry();
+                    }
+                    addToZip("", srcFolder + "/" + fileList[i], zip);
+                    i++;
                 }
-                addToZip("", srcFolder + "/" + fileListe[i], zip);
-                i++;
             }
         } catch (Exception ex) {
+            getLog().error("Error occurred while creating CAR file. " + ex);
         }
     }
 
-    static private void addToZip(String path, String srcFile, ZipOutputStream zip) {
-
-
+    private void addToZip(String path, String srcFile, ZipOutputStream zip) {
         File folder = new File(srcFile);
         if (folder.isDirectory()) {
             addFolderToZip(path, srcFile, zip);
@@ -267,31 +186,32 @@ public class CARMojo extends AbstractMojo {
                 }
                 in.close();
             } catch (Exception ex) {
-                ex.printStackTrace();
+                getLog().error("Error occurred while creating CAR file. " + ex);
             }
         }
     }
 
-    static private void addFolderToZip(String path, String srcFolder, ZipOutputStream zip) {
+    private void addFolderToZip(String path, String srcFolder, ZipOutputStream zip) {
         File folder = new File(srcFolder);
-        String fileListe[] = folder.list();
+        String[] fileList = folder.list();
         try {
-            int i = 0;
-            while (true) {
-                if (fileListe.length == i) break;
-                String newPath = folder.getName();
-                if (!path.equalsIgnoreCase("")) {
-                    newPath = path + "/" + newPath;
+            if (fileList != null) {
+                int i = 0;
+                while (true) {
+                    if (fileList.length == i) break;
+                    String newPath = folder.getName();
+                    if (!path.equalsIgnoreCase("")) {
+                        newPath = path + "/" + newPath;
+                    }
+                    if (new File(folder, fileList[i]).isDirectory()) {
+                        zip.putNextEntry(new ZipEntry(newPath + "/" + fileList[i] + "/"));
+                    }
+                    addToZip(newPath, srcFolder + "/" + fileList[i], zip);
+                    i++;
                 }
-                if (new File(folder, fileListe[i]).isDirectory()) {
-                    zip.putNextEntry(new ZipEntry(newPath + "/" + fileListe[i] + "/"));
-//					zip.closeEntry();
-                }
-                addToZip(newPath, srcFolder + "/" + fileListe[i], zip);
-                i++;
             }
         } catch (Exception ex) {
+            getLog().error("Error occurred while creating CAR file. " + ex);
         }
     }
-
 }
