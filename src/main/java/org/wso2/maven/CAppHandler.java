@@ -68,7 +68,6 @@ public class CAppHandler extends AbstractXmlDoc {
              * create corresponding artifact.xml in archive file.
              * */
             String artifactDataAsString = createArtifactData(artifactObject);
-            System.out.println(artifactDataAsString);
             CAppFileUtils.createFile(
                     new File(Paths.get(archiveDirectory, artifactFolderName).toString(), "artifact.xml"),
                     artifactDataAsString);

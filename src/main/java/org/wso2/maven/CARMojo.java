@@ -78,8 +78,6 @@ public class CARMojo extends AbstractMojo {
 
     public void execute() throws MojoExecutionException {
         appendLogs();
-
-
         // Create CApp
         try {
             // Create directory to be compressed.
@@ -96,6 +94,8 @@ public class CARMojo extends AbstractMojo {
 
                 File fileToZip = new File(archiveDirectory);
                 zipFolder(fileToZip.getPath(), getArchiveFile(".car").getPath());
+
+                recursiveDelete(fileToZip);
 
             } else {
                 getLog().error("Could not create corresponding archive directory.");
@@ -213,5 +213,21 @@ public class CARMojo extends AbstractMojo {
         } catch (Exception ex) {
             getLog().error("Error occurred while creating CAR file. " + ex);
         }
+    }
+
+    private void recursiveDelete(File file) {
+        //to end the recursive loop
+        if (!file.exists())
+            return;
+
+        //if directory, go inside and call recursively
+        if (file.isDirectory()) {
+            for (File f : file.listFiles()) {
+                //call recursively
+                recursiveDelete(f);
+            }
+        }
+        //call delete to delete files and empty directory
+        file.delete();
     }
 }
