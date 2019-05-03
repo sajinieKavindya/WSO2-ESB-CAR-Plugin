@@ -120,21 +120,17 @@ public class CARMojo extends AbstractMojo {
             archiveFile = new File(archiveLocation, finalName + fileExtension);
             return archiveFile;
         }
-        String archiveFilename = project.getArtifactId() + "_" +
-                project.getVersion() +
-                (classifier != null ? "-" + classifier : "") +
-                fileExtension;
+        String archiveFilename = project.getArtifactId() + "_" + project.getVersion() +
+                (classifier != null ? "-" + classifier : "") + fileExtension;
         archiveFile = new File(archiveLocation, archiveFilename);
 
         return archiveFile;
     }
 
     private void zipFolder(String srcFolder, String destZipFile) {
-        ZipOutputStream zip = null;
-        FileOutputStream fileWriter = null;
         try {
-            fileWriter = new FileOutputStream(destZipFile);
-            zip = new ZipOutputStream(fileWriter);
+            FileOutputStream fileWriter = new FileOutputStream(destZipFile);
+            ZipOutputStream zip = new ZipOutputStream(fileWriter);
 
             addFolderContentsToZip(srcFolder, zip);
 
@@ -217,8 +213,9 @@ public class CARMojo extends AbstractMojo {
 
     private void recursiveDelete(File file) {
         //to end the recursive loop
-        if (!file.exists())
+        if (!file.exists()) {
             return;
+        }
 
         //if directory, go inside and call recursively
         if (file.isDirectory()) {
